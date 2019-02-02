@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp2.1</TargetFramework>
+    <UserSecretsId>826ac502-5665-4124-a09d-38c8eb52043c</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -10,7 +11,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="Microsoft.OpenApi.Readers" Version="1.1.1" />
+    <PackageReference Include="Microsoft.OpenApi.Readers" Version="1.1.2-beta.5" />
   </ItemGroup>
 
 </Project>

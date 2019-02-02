@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net.Http.Headers;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.OpenApi.Models;
 using Microsoft.OpenApi.Services;
 
 namespace apislice.Controllers
@@ -16,8 +17,49 @@ namespace apislice.Controllers
         [HttpGet]
         public IActionResult Get()
         {
-
             var graphOpenApi = FilterOpenApiService.GetGraphOpenApiV1();
+            string result = CreateIndex(graphOpenApi);
+
+            return new ContentResult()
+            {
+                Content = result,
+                ContentType = "text/plain"
+            };
+        }
+
+
+        [Route("v1.0")]
+        [HttpGet]
+        public IActionResult Getv10()
+        {
+            var graphOpenApi = FilterOpenApiService.GetGraphOpenApiV1();
+            string result = CreateIndex(graphOpenApi);
+
+            return new ContentResult()
+            {
+                Content = result,
+                ContentType = "text/plain"
+            };
+        }
+
+        [Route("beta")]
+        [HttpGet]
+        public IActionResult GetBeta()
+        {
+            var graphOpenApi = FilterOpenApiService.GetGraphOpenApiBeta();
+            string result = CreateIndex(graphOpenApi);
+
+            return new ContentResult()
+            {
+                Content = result,
+                ContentType = "text/plain"
+            };
+        }
+
+
+        private static string CreateIndex(OpenApiDocument graphOpenApi)
+        {
+            
             var indexSearch = new OpenApiOperationIndex();
             var walker = new OpenApiWalker(indexSearch);
 
@@ -37,11 +79,7 @@ namespace apislice.Controllers
                 }
             }
             var result = outputsb.ToString();
-
-            return new ContentResult() {
-                Content = result,
-                ContentType = "text/plain"
-            };
+            return result;
         }
     }
 }
