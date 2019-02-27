@@ -18,13 +18,9 @@ namespace apislice.Controllers
         public IActionResult Get()
         {
             var graphOpenApi = FilterOpenApiService.GetGraphOpenApiV1();
-            string result = CreateIndex(graphOpenApi);
+            string result = CreateIndex(graphOpenApi, Response.Body);
 
-            return new ContentResult()
-            {
-                Content = result,
-                ContentType = "text/plain"
-            };
+            return new EmptyResult();
         }
 
 
@@ -33,13 +29,11 @@ namespace apislice.Controllers
         public IActionResult Getv10()
         {
             var graphOpenApi = FilterOpenApiService.GetGraphOpenApiV1();
-            string result = CreateIndex(graphOpenApi);
 
-            return new ContentResult()
-            {
-                Content = result,
-                ContentType = "text/plain"
-            };
+            Response.Headers["Content-Type"] = "text/html";
+            string result = CreateIndex(graphOpenApi, Response.Body);
+
+            return new EmptyResult();
         }
 
         [Route("beta")]
@@ -47,18 +41,15 @@ namespace apislice.Controllers
         public IActionResult GetBeta()
         {
             var graphOpenApi = FilterOpenApiService.GetGraphOpenApiBeta();
-            string result = CreateIndex(graphOpenApi);
+            string result = CreateIndex(graphOpenApi, Response.Body);
 
-            return new ContentResult()
-            {
-                Content = result,
-                ContentType = "text/plain"
-            };
+            return new EmptyResult();
         }
 
 
-        private static string CreateIndex(OpenApiDocument graphOpenApi)
+        private static string CreateIndex(OpenApiDocument graphOpenApi, Stream stream)
         {
+            var sw = new StreamWriter(stream);
             
             var indexSearch = new OpenApiOperationIndex();
             var walker = new OpenApiWalker(indexSearch);
@@ -67,17 +58,22 @@ namespace apislice.Controllers
 
             var outputsb = new StringBuilder();
 
-            outputsb.AppendLine("# OpenAPI Operations for Microsoft Graph");
-            outputsb.AppendLine();
+            sw.AutoFlush = true;
+
+            sw.WriteLine("<h1># OpenAPI Operations for Microsoft Graph</h1>");
+            sw.WriteLine("<b/>");
+            sw.WriteLine("<ul>");
             foreach (var item in indexSearch.Index)
             {
-                outputsb.AppendLine("## " + item.Key.Name);
+                sw.WriteLine("<li><a href='./$openapi?tags=" + item.Key.Name+"'>" + item.Key.Name+"</a></li>");
+                sw.WriteLine("<ul>");
                 foreach (var op in item.Value)
                 {
-                    outputsb.Append("- ");
-                    outputsb.AppendLine(op.OperationId);
+                    sw.WriteLine("<li><a href='./$openapi?operationIds=" + op.OperationId + "'>" + op.OperationId + "</a></li>");
                 }
+                sw.WriteLine("</ul>");
             }
+            sw.WriteLine("</ul>");
             var result = outputsb.ToString();
             return result;
         }

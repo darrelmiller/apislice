@@ -1,5 +1,4 @@
-﻿using Microsoft.OpenApi.Interfaces;
-using Microsoft.OpenApi.Models;
+﻿using Microsoft.OpenApi.Models;
 using Microsoft.OpenApi.Readers;
 using Microsoft.OpenApi.Services;
 using Microsoft.OpenApi.Validations;
@@ -27,13 +26,13 @@ namespace apislice
             return search.SearchResults;
         }
 
-        public static OpenApiDocument CreateFilteredDocument(OpenApiDocument source, Func<OpenApiOperation, bool> predicate)
+        public static OpenApiDocument CreateFilteredDocument(string version, OpenApiDocument source, Func<OpenApiOperation, bool> predicate)
         {
             var subset = new OpenApiDocument();
             subset.Info = new OpenApiInfo()
             {
                 Title = "Subset of Microsoft Graph API",
-                Version = ""
+                Version = version
             };
 
             subset.Components = new OpenApiComponents();
@@ -78,52 +77,8 @@ namespace apislice
                 }
 
                 pathItem.Operations.Add((OperationType)result.CurrentKeys.Operation, result.Operation);
-              //  CopyRefs(subset, result.Operation);
             }
             return subset;
-        }
-
-        private static void CopyRefs(OpenApiDocument subset, OpenApiOperation operation)
-        {
-            subset.Components = new OpenApiComponents();
-
-            foreach (var parameter in operation.Parameters)
-            {
-                if (parameter.Reference != null)
-                {
-                    if (subset.Components.Parameters == null) {
-                        subset.Components.Parameters = new Dictionary<string, OpenApiParameter>();
-                    }
-                    subset.Components.Parameters.Add(parameter.Reference.Id, parameter);
-                }
-            }
-
-            foreach (var response in operation.Responses.Values)
-            {
-                if (response.Reference != null)
-                {
-                    if (subset.Components.Responses == null)
-                    {
-                        subset.Components.Responses = new Dictionary<string, OpenApiResponse>();
-                    }
-                    subset.Components.Responses.Add(response.Reference.Id, response);
-                }
-                else
-                {
-                    foreach (var item in response.Content.Values)
-                    {
-                        if (item.Schema != null && item.Schema.Reference != null)
-                        {
-                            if (subset.Components.Schemas == null)
-                            {
-                                subset.Components.Schemas = new Dictionary<string, OpenApiSchema>();
-                            }
-                            subset.Components.Schemas.Add(item.Schema.Reference.Id, item.Schema);
-                        }
-
-                    }
-                }
-            }
         }
 
         public static OpenApiDocument GetGraphOpenApiV1()
@@ -242,129 +197,6 @@ namespace apislice
         }
 
    }
-
-
-    public class CopyReferences : OpenApiVisitorBase
-    {
-        private readonly OpenApiDocument source;
-        private readonly OpenApiDocument target;
-        public OpenApiComponents Components = new OpenApiComponents();
-
-        public CopyReferences(OpenApiDocument source, OpenApiDocument target)
-        {
-            this.source = source;
-            this.target = target;
-        }
-
-        public override void Visit(IOpenApiReferenceable referenceable)
-        {
-            switch (referenceable)
-            {
-                case OpenApiSchema schema:
-                    EnsureComponentsExists();
-                    EnsureSchemasExists();
-                    if (!Components.Schemas.ContainsKey(schema.Reference.Id))
-                    {
-                        Components.Schemas.Add(schema.Reference.Id, schema);
-                    }
-                    break;
-
-                case OpenApiParameter parameter:
-                    EnsureComponentsExists();
-                    EnsureParametersExists();
-                    if (!Components.Parameters.ContainsKey(parameter.Reference.Id))
-                    {
-                        Components.Parameters.Add(parameter.Reference.Id, parameter);
-                    }
-                    break;
-
-                case OpenApiResponse response:
-                    EnsureComponentsExists();
-                    EnsureResponsesExists();
-                    if (!Components.Responses.ContainsKey(response.Reference.Id))
-                    {
-                        Components.Responses.Add(response.Reference.Id, response);
-                    }
-                    break;
-
-                default:
-                    break;
-            }
-            base.Visit(referenceable);
-        }
-
-        public override void Visit(OpenApiSchema schema)
-        {
-            // This is needed to handle schemas used in Responses in components
-            if (schema.Reference != null)
-            {
-                EnsureComponentsExists();
-                EnsureSchemasExists();
-                if (!Components.Schemas.ContainsKey(schema.Reference.Id))
-                {
-                    Components.Schemas.Add(schema.Reference.Id, schema); 
-                }
-            }
-            base.Visit(schema);
-        }
-
-        private void EnsureComponentsExists()
-        {
-            if (target.Components == null)
-            {
-                target.Components = new OpenApiComponents();
-            }
-        }
-
-        private void EnsureSchemasExists()
-        {
-            if (target.Components.Schemas == null)
-            {
-                target.Components.Schemas = new Dictionary<string, OpenApiSchema>();
-            }
-        }
-
-        private void EnsureParametersExists()
-        {
-            if (target.Components.Parameters == null)
-            {
-                target.Components.Parameters = new Dictionary<string, OpenApiParameter>();
-            }
-        }
-
-        private void EnsureResponsesExists()
-        {
-            if (target.Components.Responses == null)
-            {
-                target.Components.Responses = new Dictionary<string, OpenApiResponse>();
-            }
-        }
-    }
-
-    public class OpenApiOperationIndex : OpenApiVisitorBase
-    {
-        public Dictionary<OpenApiTag, List<OpenApiOperation>> Index = new Dictionary<OpenApiTag, List<OpenApiOperation>>();
-        public override void Visit(OpenApiOperation operation)
-        {
-            foreach (var tag in operation.Tags)
-            {
-                AddToIndex(tag, operation);
-            }
-        }
-
-        private void AddToIndex(OpenApiTag tag, OpenApiOperation operation)
-        {
-            List<OpenApiOperation> operations;
-            if (!Index.TryGetValue(tag, out operations))
-            {
-                operations = new List<OpenApiOperation>();
-                Index[tag] = operations;
-            }
-
-            operations.Add(operation);
-
-        }
-    }
 
     public class OperationSearch : OpenApiVisitorBase
     {

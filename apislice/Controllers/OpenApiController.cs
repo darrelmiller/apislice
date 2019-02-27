@@ -10,12 +10,18 @@ using System.Threading.Tasks;
 
 namespace apislice.Controllers
 {
+    /// <summary>
+    /// Controller that enables querying over an OpenAPI document
+    /// </summary>
     public class OpenApiController : ControllerBase
     {
         [Route("$openapi")]
         [Route("{version}/$openapi")]
         [HttpGet]
-        public IActionResult Get(string version = "v1.0", [FromQuery]string operationIds = null, [FromQuery]string openApiVersion = "2")
+        public IActionResult Get(string version = "v1.0", 
+                                    [FromQuery]string operationIds = null, 
+                                    [FromQuery]string tags = null,
+                                    [FromQuery]string openApiVersion = "2")
         {
             OpenApiDocument graphOpenApi = null;
             switch (version)
@@ -31,21 +37,43 @@ namespace apislice.Controllers
                     return new NotFoundResult();
             }
 
-            if (operationIds == null)
+            if (operationIds != null && tags != null)
+            {
+                return new BadRequestResult();
+            }
+
+            Func<OpenApiOperation, bool> predicate = null;
+            if (operationIds != null)
+            {
+                var operationIdsArray = operationIds.Split(',');
+                predicate = (o) => operationIdsArray.Contains(o.OperationId);
+            }
+            else if (tags != null)
+            {
+                var tagsArray = tags.Split(',');
+                predicate = (o) => o.Tags.Any(t => tagsArray.Contains(t.Name));
+            }
+            else
             {
                 return new NotFoundResult();
             }
-            var operationIdsArray = operationIds.Split(',');
 
-            var subset = FilterOpenApiService.CreateFilteredDocument(graphOpenApi, (o) => operationIdsArray.Contains(o.OperationId));
+            var subsetOpenApiDocument = FilterOpenApiService.CreateFilteredDocument(version, graphOpenApi, predicate);
 
-            FilterOpenApiService.CopyReferences(graphOpenApi, subset);
+            FilterOpenApiService.CopyReferences(graphOpenApi, subsetOpenApiDocument);
 
+            return CreateResult(openApiVersion, subsetOpenApiDocument);
+        }
+
+        private static IActionResult CreateResult(string openApiVersion, OpenApiDocument subset)
+        {
             var sr = new StringWriter();
             var writer = new OpenApiJsonWriter(sr);
-            if (openApiVersion == "2") { 
+            if (openApiVersion == "2")
+            {
                 subset.SerializeAsV2(writer);
-            } else
+            }
+            else
             {
                 subset.SerializeAsV3(writer);
             }
@@ -57,6 +85,5 @@ namespace apislice.Controllers
                 ContentType = "application/json"
             };
         }
-
     }
 }
