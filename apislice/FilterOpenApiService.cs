@@ -26,16 +26,18 @@ namespace apislice
             return search.SearchResults;
         }
 
-        public static OpenApiDocument CreateFilteredDocument(string version, OpenApiDocument source, Func<OpenApiOperation, bool> predicate)
+        public static OpenApiDocument CreateFilteredDocument(string title, string version, OpenApiDocument source, Func<OpenApiOperation, bool> predicate)
         {
-            var subset = new OpenApiDocument();
-            subset.Info = new OpenApiInfo()
+            var subset = new OpenApiDocument
             {
-                Title = "Subset of Microsoft Graph API",
-                Version = version
-            };
+                Info = new OpenApiInfo()
+                {
+                    Title = title,
+                    Version = version
+                },
 
-            subset.Components = new OpenApiComponents();
+                Components = new OpenApiComponents()
+            };
             var aadv2Scheme = new OpenApiSecurityScheme()
             {
                 Type = SecuritySchemeType.OAuth2,

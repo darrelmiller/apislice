@@ -21,7 +21,8 @@ namespace apislice.Controllers
         public IActionResult Get(string version = "v1.0", 
                                     [FromQuery]string operationIds = null, 
                                     [FromQuery]string tags = null,
-                                    [FromQuery]string openApiVersion = "2")
+                                    [FromQuery]string openApiVersion = "2",
+                                    [FromQuery]string title = "Partial Graph API")
         {
             OpenApiDocument graphOpenApi = null;
             switch (version)
@@ -58,9 +59,13 @@ namespace apislice.Controllers
                 return new NotFoundResult();
             }
 
-            var subsetOpenApiDocument = FilterOpenApiService.CreateFilteredDocument(version, graphOpenApi, predicate);
+            var subsetOpenApiDocument = FilterOpenApiService.CreateFilteredDocument(title,version, graphOpenApi, predicate);
 
             FilterOpenApiService.CopyReferences(graphOpenApi, subsetOpenApiDocument);
+
+            var anyOfRemover = new AnyOfRemover();
+            var walker = new OpenApiWalker(anyOfRemover);
+            walker.Walk(subsetOpenApiDocument);
 
             return CreateResult(openApiVersion, subsetOpenApiDocument);
         }
@@ -68,7 +73,7 @@ namespace apislice.Controllers
         private static IActionResult CreateResult(string openApiVersion, OpenApiDocument subset)
         {
             var sr = new StringWriter();
-            var writer = new OpenApiJsonWriter(sr);
+            var writer = new OpenApiYamlWriter(sr);
             if (openApiVersion == "2")
             {
                 subset.SerializeAsV2(writer);

@@ -2,6 +2,7 @@
 using Microsoft.OpenApi.Models;
 using Microsoft.OpenApi.Services;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace apislice
 {
@@ -102,4 +103,28 @@ namespace apislice
         }
     }
 
+
+
+    public class AnyOfRemover : OpenApiVisitorBase
+    {
+        public override void Visit(OpenApiSchema schema)
+        {
+            if (schema.AnyOf != null )
+            {
+                var newSchema = schema.AnyOf.FirstOrDefault();
+                schema.AnyOf = null;
+                if (newSchema != null)
+                {
+                    if (newSchema.Reference != null)
+                    {
+                        schema.Reference = newSchema.Reference;
+                    }
+                    else
+                    {
+                        schema.Type = newSchema.Type;
+                    }
+                }
+            }
+        }
+    }
 }
