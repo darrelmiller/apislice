@@ -1,6 +1,7 @@
 ﻿using Microsoft.OpenApi.Interfaces;
 using Microsoft.OpenApi.Models;
 using Microsoft.OpenApi.Services;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -103,27 +104,83 @@ namespace apislice
         }
     }
 
-
-
     public class AnyOfRemover : OpenApiVisitorBase
     {
-        public override void Visit(OpenApiSchema schema)
+        public void visitProperties(IDictionary<string, OpenApiSchema> properties)
         {
-            if (schema.AnyOf != null )
+            foreach (var property in properties)
             {
-                var newSchema = schema.AnyOf.FirstOrDefault();
-                schema.AnyOf = null;
-                if (newSchema != null)
+                if (property.Value != null)
                 {
-                    if (newSchema.Reference != null)
+                    var currentSchema = property.Value;
+
+                    if (currentSchema.Properties != null && currentSchema.Properties.Count > 0)
                     {
-                        schema.Reference = newSchema.Reference;
+                        visitProperties(currentSchema.Properties);
+                        continue;
                     }
-                    else
+
+                    if (currentSchema.AnyOf != null && currentSchema.AnyOf.Count > 0)
                     {
-                        schema.Type = newSchema.Type;
+                        var curr = currentSchema.AnyOf.FirstOrDefault();
+                        currentSchema.AnyOf = null;
+
+                        if (curr.Reference != null)
+                        {
+                            currentSchema.Reference = curr.Reference;
+                        }
+                        else
+                        {
+                            currentSchema.Type = curr.Type;
+                        }
+                    }
+                    if (currentSchema.Items != null)
+                    {
+                        if (currentSchema.Items.AnyOf != null && currentSchema.Items.AnyOf.Count > 0)
+                        {
+                            var curr = currentSchema.Items.AnyOf.FirstOrDefault();
+                            currentSchema.Items.AnyOf = null;
+
+                            if (curr.Reference != null)
+                            {
+                                currentSchema.Items.Reference = curr.Reference;
+                            }
+                            else
+                            {
+                                currentSchema.Items.Type = curr.Type;
+                            }
+                        }
                     }
                 }
+            }
+        }
+
+        public override void Visit(OpenApiSchema schema)
+        {
+            if (schema.AnyOf != null && schema.AnyOf.Count > 0)
+            {
+                var newSchema = schema.AnyOf.FirstOrDefault();
+
+                if (newSchema != null)
+                {
+                    if (newSchema.AllOf != null && newSchema.AllOf.Count > 0)
+                    {
+                        foreach (var abc in newSchema.AllOf)
+                        {
+                            Visit(abc);
+                        }
+                    }
+
+                    if (newSchema.Properties != null && newSchema.Properties.Count > 0)
+                    {
+                        visitProperties(newSchema.Properties);
+                    }
+                }
+            }
+
+            if (schema.Properties != null && schema.Properties.Count > 0)
+            {
+                visitProperties(schema.Properties);
             }
         }
     }
