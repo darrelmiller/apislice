@@ -10,7 +10,7 @@ using Microsoft.OpenApi.Services;
 
 namespace apislice.Controllers
 {
-    [Route("")]
+    [Route("list")]
     [ApiController]
     public class IndexController : ControllerBase
     {
@@ -18,7 +18,7 @@ namespace apislice.Controllers
         public IActionResult Get()
         {
             var graphOpenApi = FilterOpenApiService.GetGraphOpenApiV1();
-            string result = CreateIndex(graphOpenApi, Response.Body);
+            WriteIndex(graphOpenApi, Response.Body);
 
             return new EmptyResult();
         }
@@ -31,7 +31,7 @@ namespace apislice.Controllers
             var graphOpenApi = FilterOpenApiService.GetGraphOpenApiV1();
 
             Response.Headers["Content-Type"] = "text/html";
-            string result = CreateIndex(graphOpenApi, Response.Body);
+            WriteIndex(graphOpenApi, Response.Body);
 
             return new EmptyResult();
         }
@@ -41,13 +41,13 @@ namespace apislice.Controllers
         public IActionResult GetBeta()
         {
             var graphOpenApi = FilterOpenApiService.GetGraphOpenApiBeta();
-            string result = CreateIndex(graphOpenApi, Response.Body);
+            WriteIndex(graphOpenApi, Response.Body);
 
             return new EmptyResult();
         }
 
 
-        private static string CreateIndex(OpenApiDocument graphOpenApi, Stream stream)
+        private static void WriteIndex(OpenApiDocument graphOpenApi, Stream stream)
         {
             var sw = new StreamWriter(stream);
             
@@ -55,8 +55,6 @@ namespace apislice.Controllers
             var walker = new OpenApiWalker(indexSearch);
 
             walker.Walk(graphOpenApi);
-
-            var outputsb = new StringBuilder();
 
             sw.AutoFlush = true;
 
@@ -74,8 +72,7 @@ namespace apislice.Controllers
                 sw.WriteLine("</ul>");
             }
             sw.WriteLine("</ul>");
-            var result = outputsb.ToString();
-            return result;
+
         }
     }
 }

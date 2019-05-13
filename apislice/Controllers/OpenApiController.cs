@@ -10,6 +10,13 @@ using System.Threading.Tasks;
 
 namespace apislice.Controllers
 {
+    public enum OpenApiStyle
+    {
+        Powershell,
+        PowerPlatform,
+        Plain
+    }
+
     /// <summary>
     /// Controller that enables querying over an OpenAPI document
     /// </summary>
@@ -18,11 +25,13 @@ namespace apislice.Controllers
         [Route("$openapi")]
         [Route("{version}/$openapi")]
         [HttpGet]
-        public IActionResult Get(string version = "v1.0", 
-                                    [FromQuery]string operationIds = null, 
+        public IActionResult Get(string version = "v1.0",
+                                    [FromQuery]string operationIds = null,
                                     [FromQuery]string tags = null,
                                     [FromQuery]string openApiVersion = "2",
-                                    [FromQuery]string title = "Partial Graph API")
+                                    [FromQuery]string title = "Partial Graph API",
+                                    [FromQuery]OpenApiStyle style = OpenApiStyle.Plain,
+                                    [FromQuery]string format = "yaml")
         {
             OpenApiDocument graphOpenApi = null;
             switch (version)
@@ -59,21 +68,33 @@ namespace apislice.Controllers
                 return new NotFoundResult();
             }
 
-            var subsetOpenApiDocument = FilterOpenApiService.CreateFilteredDocument(title,version, graphOpenApi, predicate);
+            var subsetOpenApiDocument = FilterOpenApiService.CreateFilteredDocument(title, version, graphOpenApi, predicate);
 
             FilterOpenApiService.CopyReferences(graphOpenApi, subsetOpenApiDocument);
 
-            var anyOfRemover = new AnyOfRemover();
-            var walker = new OpenApiWalker(anyOfRemover);
-            walker.Walk(subsetOpenApiDocument);
+            if (style == OpenApiStyle.PowerPlatform || style == OpenApiStyle.Powershell)
+            {
+                var anyOfRemover = new AnyOfRemover();
+                var walker = new OpenApiWalker(anyOfRemover);
+                walker.Walk(subsetOpenApiDocument);
+            }
 
-            return CreateResult(openApiVersion, subsetOpenApiDocument);
+            return CreateResult(openApiVersion, subsetOpenApiDocument, format);
         }
 
-        private static IActionResult CreateResult(string openApiVersion, OpenApiDocument subset)
+        private static IActionResult CreateResult(string openApiVersion, OpenApiDocument subset, string format)
         {
             var sr = new StringWriter();
-            var writer = new OpenApiYamlWriter(sr);
+            OpenApiWriterBase writer;
+            if (format == "yaml")
+            {
+                writer = new OpenApiYamlWriter(sr);
+            }
+            else
+            {
+                writer = new OpenApiJsonWriter(sr);
+            }
+
             if (openApiVersion == "2")
             {
                 subset.SerializeAsV2(writer);
