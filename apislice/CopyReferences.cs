@@ -206,7 +206,12 @@ namespace apislice
             {
                 string str = p.Value.OperationId;
                 char[] ch = str.ToCharArray();
-                ch[str.LastIndexOf(@".")] = '_';
+                int index = str.LastIndexOf(@".");
+                if (index != -1)
+                {
+                    ch[index] = '_';
+                }
+                
                 p.Value.OperationId = new string(ch);
             }
         }
