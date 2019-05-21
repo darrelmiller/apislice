@@ -21,7 +21,7 @@ namespace apislice.Controllers
         public IActionResult Get(string version = "v1.0", 
                                     [FromQuery]string operationIds = null, 
                                     [FromQuery]string tags = null,
-                                    [FromQuery]string openApiVersion = "2",
+                                    [FromQuery]string openApiVersion = "3",
                                     [FromQuery]string title = "Partial Graph API")
         {
             OpenApiDocument graphOpenApi = null;

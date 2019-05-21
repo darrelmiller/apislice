@@ -1,8 +1,9 @@
-﻿using Microsoft.OpenApi.Interfaces;
+using Microsoft.OpenApi.Interfaces;
 using Microsoft.OpenApi.Models;
 using Microsoft.OpenApi.Services;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 
 namespace apislice
 {
@@ -154,19 +155,74 @@ namespace apislice
             }
         }
 
+        public override void Visit(OpenApiResponse response)
+        {
+            foreach(KeyValuePair<string, OpenApiMediaType> entry in response.Content)
+            {
+                Visit(entry.Value);
+            }
+        }
+
+        public override void Visit(OpenApiParameter parameter)
+        {
+            if (parameter != null)
+            {
+                if (parameter.Schema != null && parameter.Schema.AnyOf != null && parameter.Schema.AnyOf.Count > 0)
+                {
+                    parameter.Schema.Reference = parameter.Schema.AnyOf.FirstOrDefault().Reference;
+                }
+            }
+        }
+
+        public override void Visit(OpenApiMediaType mediaType)
+        {  
+            Visit(mediaType.Schema);
+
+            if(mediaType.Schema.AnyOf != null && mediaType.Schema.AnyOf.Count > 0)
+            {
+                mediaType.Schema.Reference = mediaType.Schema.AnyOf.FirstOrDefault().Reference;
+            }
+
+            if(mediaType.Schema.Items != null && mediaType.Schema.Items.AnyOf != null)
+            {
+                if(mediaType.Schema.Items.AnyOf.Count > 0)
+                {
+                    mediaType.Schema.Items.Reference = mediaType.Schema.Items.AnyOf.FirstOrDefault().Reference;
+                }
+            }
+        }
+
+        public override void Visit(OpenApiResponses response)
+        {
+            foreach (KeyValuePair<string, OpenApiResponse> entry in response)
+            {
+                Visit(entry.Value);
+            }
+        }
+
+        public override void Visit(IDictionary<OperationType, OpenApiOperation> operations)
+        {
+            foreach (KeyValuePair<OperationType, OpenApiOperation> p in operations)
+            {
+                string str = p.Value.OperationId;
+                char[] ch = str.ToCharArray();
+                ch[str.LastIndexOf(@".")] = '_';
+                p.Value.OperationId = new string(ch);
+            }
+        }
+
         public override void Visit(OpenApiSchema schema)
         {
             if (schema.AnyOf != null && schema.AnyOf.Count > 0)
             {
                 var newSchema = schema.AnyOf.FirstOrDefault();
-
                 if (newSchema != null)
                 {
                     if (newSchema.AllOf != null && newSchema.AllOf.Count > 0)
                     {
-                        foreach (var abc in newSchema.AllOf)
+                        foreach (var s in newSchema.AllOf)
                         {
-                            Visit(abc);
+                            Visit(s);
                         }
                     }
 
