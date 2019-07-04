@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi.Readers;
+using Microsoft.OpenApi.Readers.Interface;
 using Microsoft.OpenApi.Services;
 using Microsoft.OpenApi.Writers;
 using System;
@@ -55,8 +57,12 @@ namespace apislice.Controllers
             Func<OpenApiOperation, bool> predicate = null;
             if (operationIds != null)
             {
-                var operationIdsArray = operationIds.Split(',');
-                predicate = (o) => operationIdsArray.Contains(o.OperationId);
+                if (operationIds == "*") {
+                    predicate = (o) => true;  // All operations
+                } else {
+                    var operationIdsArray = operationIds.Split(',');
+                    predicate = (o) => operationIdsArray.Contains(o.OperationId);
+                }
             }
             else if (tags != null)
             {
@@ -74,12 +80,26 @@ namespace apislice.Controllers
 
             if (style == OpenApiStyle.PowerPlatform || style == OpenApiStyle.Powershell)
             {
+                // Clone doc before making changes
+                subsetOpenApiDocument = Clone(subsetOpenApiDocument);
+
                 var anyOfRemover = new AnyOfRemover();
                 var walker = new OpenApiWalker(anyOfRemover);
                 walker.Walk(subsetOpenApiDocument);
             }
 
             return CreateResult(openApiVersion, subsetOpenApiDocument, format);
+        }
+
+        private static OpenApiDocument Clone(OpenApiDocument subsetOpenApiDocument)
+        {
+            var stream = new MemoryStream();
+            var writer = new OpenApiYamlWriter(new StreamWriter(stream));
+            subsetOpenApiDocument.SerializeAsV3(writer);
+            writer.Flush();
+            stream.Position = 0;
+            var reader = new OpenApiStreamReader();
+            return reader.Read(stream, out OpenApiDiagnostic diag);
         }
 
         private static IActionResult CreateResult(string openApiVersion, OpenApiDocument subset, string format)
